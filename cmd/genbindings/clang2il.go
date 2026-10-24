@@ -74,6 +74,24 @@ func parseHeader(node *AstNode, addNamePrefix string, output *CppParsedHeader) {
 
 		output.Classes = append(output.Classes, obj)
 
+	case "ClassTemplateSpecializationDecl":
+		// trial: a configured pre-instantiation (see instantiate_trial.go)
+		if node.file() != output.Filename || output.Filename != trialInstFile {
+			return
+		}
+		loc, _ := node.Fields["loc"].(map[string]interface{})
+		ln, _ := loc["line"].(float64)
+		inst, ok := trialInstByLn[int(ln)]
+		if !ok {
+			return
+		}
+		node.Fields["name"] = inst.Cpp
+		obj, err := processClassType(node, "")
+		if err != nil {
+			panic(err)
+		}
+		output.Classes = append(output.Classes, obj)
+
 	case "EnumDecl":
 		if node.file() != output.Filename {
 			return

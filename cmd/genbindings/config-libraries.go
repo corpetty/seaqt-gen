@@ -153,9 +153,17 @@ func buildQt6(clangBin, outDir, extraLibsDir, qtVersion string) {
 		for _, h := range strings.Split(os.Getenv("SEAQT_GEN_LOGOS_HEADERS"), ",") {
 			hdrs = append(hdrs, filepath.Join(sdk, strings.TrimSpace(h)))
 		}
+		extra := ""
+		// SEAQT_GEN_INSTANTIATE="BoxInt=lib::Box<int>;..." with
+		// SEAQT_GEN_INSTANTIATE_INCLUDES="box.h,...": template pre-instantiation trial
+		if spec := os.Getenv("SEAQT_GEN_INSTANTIATE"); spec != "" {
+			incs := strings.Split(os.Getenv("SEAQT_GEN_INSTANTIATE_INCLUDES"), ",")
+			hdrs = append(hdrs, writeTrialInstantiations(filepath.Join(outDir, "instantiations"), incs, spec))
+			extra = " -DSEAQT_GEN_PARSE -I" + filepath.Join(outDir, "instantiations")
+		}
 		generate(
 			"LogosSdk", "Qt6Core", qtHeaders, qtVersion, hdrs,
-			clangBin, "--std=c++17 -I"+filepath.Join(sdk, "cpp")+" -I"+filepath.Join(sdk, "core"),
+			clangBin, "--std=c++17 -I"+filepath.Join(sdk, "cpp")+" -I"+filepath.Join(sdk, "core")+extra,
 			seaqtDir, nimSeaqtDir,
 		)
 	}

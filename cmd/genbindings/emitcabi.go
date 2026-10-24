@@ -63,6 +63,9 @@ func cabiProtectedBaseName(c CppClass, m CppMethod) string {
 }
 
 func cppSubclassName(c CppClass) string {
+	if alias, ok := trialCabiAlias[c.ClassName]; ok {
+		return "Virtual" + alias // trial
+	}
 	return "Virtual" + strings.Replace(c.ClassName, `::`, ``, -1)
 }
 
@@ -840,6 +843,9 @@ func getReferencedTypes(src *CppParsedHeader) []string {
 // cabiClassName returns the Go / CABI class name for a Qt C++ class.
 // Normally this is the same, except for class types that are nested inside another class definition.
 func cabiClassName(className string) string {
+	if alias, ok := trialCabiAlias[className]; ok {
+		return alias // trial: pre-instantiated template
+	}
 
 	// Many types are defined in qnamespace.h under Qt::
 	// The Go implementation is always called qt.Foo, and these names don't

@@ -45,7 +45,7 @@ func parseInner(ctx *ParseCtx, kind string) bool {
 		return true
 	case "CXXConstructorDecl", "CXXMethodDecl", "CXXConversionDecl":
 		// Parameters, return type - skip when it's outside of a class declaration
-		return ctx.stack[len(ctx.stack)-1].Kind == "CXXRecordDecl"
+		return ctx.stack[len(ctx.stack)-1].Kind == "CXXRecordDecl" || ctx.stack[len(ctx.stack)-1].Kind == "ClassTemplateSpecializationDecl" // trial
 	case "CXXDestructorDecl":
 		return false
 	case "ParmVarDecl": // Parameter defaults
@@ -59,8 +59,12 @@ func parseInner(ctx *ParseCtx, kind string) bool {
 		"StaticAssertDecl", "ElaboratedType", "FullComment", "ParagraphComment",
 		"EmptyDecl", "IndirectFieldDecl", "FieldDecl":
 		return false
+	case "ClassTemplateSpecializationDecl":
+		// trial: explicit instantiation declarations at file scope
+		return ctx.stack[len(ctx.stack)-1].Kind == "TranslationUnitDecl"
+	case "TemplateArgument":
+		return false
 	case "ClassTemplateDecl", "TypeAliasTemplateDecl",
-		"ClassTemplateSpecializationDecl",
 		"ClassTemplatePartialSpecializationDecl", "FunctionTemplateDecl",
 		"VarTemplatePartialSpecializationDecl",
 		"VarTemplateSpecializationDecl", // e.g. qhashfunctions.h
@@ -93,7 +97,7 @@ func keepField(ctx *ParseCtx, kind, field string, val interface{}) bool {
 	case "loc":
 		switch kind {
 		case "TranslationUnitDecl", "NamespaceDecl", "CXXRecordDecl", "EnumDecl",
-			"TypeAliasDecl", "TypedefDecl":
+			"TypeAliasDecl", "TypedefDecl", "ClassTemplateSpecializationDecl":
 			// only needed in parseHeader
 			return true
 		case "AccessSpecDecl":
@@ -133,8 +137,11 @@ func keepInner(ctx *ParseCtx, parentKind string, child *AstNode) bool {
 		"ParmVarDecl":
 		return true
 
+	case "ClassTemplateSpecializationDecl":
+		return parentKind == "TranslationUnitDecl" // trial
+	case "TemplateArgument":
+		return false
 	case "StaticAssertDecl", "ClassTemplateDecl",
-		"ClassTemplateSpecializationDecl",
 		"ClassTemplatePartialSpecializationDecl",
 		"FunctionTemplateDecl",
 		"BuiltinTemplateDecl",                  // Scintilla
@@ -153,10 +160,10 @@ func keepInner(ctx *ParseCtx, parentKind string, child *AstNode) bool {
 	case "VarDecl", "FieldDecl", "IndirectFieldDecl":
 		// TODO e.g. qmath.h
 		// We could probably generate setter/getter for this in the CABI
-		return parentKind == "CXXRecordDecl"
+		return parentKind == "CXXRecordDecl" || parentKind == "ClassTemplateSpecializationDecl" // trial
 
 	case "CXXConstructorDecl", "CXXMethodDecl", "CXXConversionDecl", "CXXDestructorDecl":
-		return parentKind == "CXXRecordDecl"
+		return parentKind == "CXXRecordDecl" || parentKind == "ClassTemplateSpecializationDecl" // trial
 
 	case "LinkageSpecDecl":
 		// TODO e.g. qfuturewatcher.h
@@ -166,7 +173,7 @@ func keepInner(ctx *ParseCtx, parentKind string, child *AstNode) bool {
 	case "OverrideAttr", "DeprecatedAttr":
 		return true
 	case "AccessSpecDecl":
-		return parentKind == "CXXRecordDecl"
+		return parentKind == "CXXRecordDecl" || parentKind == "ClassTemplateSpecializationDecl" // trial
 	case "UsingDirectiveDecl", // qtextstream.h
 		"UsingDecl",       // qglobal.h
 		"UsingShadowDecl": // global.h
